@@ -1,47 +1,43 @@
 package com.stas.dgt;
 
 import com.fazecast.jSerialComm.SerialPort;
-import com.fazecast.jSerialComm.SerialPortDataListener;
-import com.fazecast.jSerialComm.SerialPortEvent;
+import com.google.gson.JsonObject;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Scanner;
 
 public class Connector {
 
-    static public void main(String[] args) throws IOException {
-        System.out.println("\nUsing Library Version v" + SerialPort.getVersion());
+    private static WebSocketClient client;
+
+    static public void main(String[] args) throws IOException, URISyntaxException {
         SerialPort[] ports = SerialPort.getCommPorts();
         System.out.println("\nAvailable Ports:\n");
         for (int i = 0; i < ports.length; ++i)
-            System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription());
+            System.out.println(
+                    "   [" + i + "] " + ports[i].getSystemPortName() + ": " +
+                    ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription()
+            );
         SerialPort comPort;
 
-        System.out.print("Enter port: ");
+        System.out.print("Your choice: ");
 
-        BufferedReader reader =
-                new BufferedReader(new InputStreamReader(System.in));
-        String portName = reader.readLine();
-        comPort = SerialPort.getCommPort(portName);
+        Scanner myInput = new Scanner( System.in );
+        comPort = ports[myInput.nextInt()];
+
         comPort.openPort();
+        comPort.addDataListener(new DgtListener(new Connector()));
+        client = new WebSocketClient(new URI("ws://18.223.2.26:8000"), comPort.getOutputStream());
+        client.connect();
+    }
 
-        comPort.addDataListener(new SerialPortDataListener() {
-            @Override
-            public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_RECEIVED; }
-            @Override
-            public void serialEvent(SerialPortEvent event)
-            {
-                byte[] newData = event.getReceivedData();
-
-                for (int i = 0; i < newData.length; ++i) {
-                    System.out.print(Integer.toHexString(newData[i]) + " ");
-                }
-            }
-        });
-
-        comPort.getOutputStream().write("B".getBytes());
-        comPort.getOutputStream().write("D".getBytes());
-
+    public void sendWsMessage(String message) {
+//        System.out.println("[ws_send] " + message);
+        JsonObject messageJson = new JsonObject();
+        messageJson.addProperty("direct", "stas");
+        messageJson.addProperty("message", message);
+        client.send(messageJson.toString());
     }
 }

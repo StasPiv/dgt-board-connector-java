@@ -1,5 +1,6 @@
 .idea
-*.jar
+dgt-board-connector.jar
 out
 *.zip
 *.iml
+lib
