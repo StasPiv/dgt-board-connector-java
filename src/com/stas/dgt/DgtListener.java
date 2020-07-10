@@ -4,10 +4,9 @@ import com.fazecast.jSerialComm.SerialPort;
 import com.fazecast.jSerialComm.SerialPortDataListener;
 import com.fazecast.jSerialComm.SerialPortEvent;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 class DgtListener implements SerialPortDataListener
@@ -42,17 +41,27 @@ class DgtListener implements SerialPortDataListener
             list.add(oneByte);
         }
 
-        System.out.print("Hex: ");
         StringBuilder receivedStringFromSerial = new StringBuilder();
         for (int value : list) {
             System.out.print(Integer.toHexString(value) + " ");
             receivedStringFromSerial.append((char) value);
         }
-        System.out.println();
         stringForSending += receivedStringFromSerial.toString();
 
         if (mode.equals("move") && stringForSending.length() % 5 == 0 || mode.equals("board") && stringForSending.length() == 67) {
-            System.out.println("Send string to ws");
+            System.out.println();
+
+            if (!Connector.isDgtBoardInitialized() ) {
+                try {
+                    Connector.initializeDgtBoard(serialPortEvent.getSerialPort());
+                    stringForSending = "";
+                    return;
+                } catch (URISyntaxException | IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            System.out.println("Mode: " + mode + ". Send string to ws");
             connector.sendWsMessage(stringForSending);
             stringForSending = "";
         }
